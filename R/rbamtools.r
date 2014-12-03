@@ -623,8 +623,20 @@ setGeneric("plotAlignDepth",
                     strand=NULL , log="y", cex.main=2,
                     col="grey50", fill="grey90", grid=TRUE, 
                     box.col="grey20", box.border="grey80", ... )
-               standardGeneric("plotAlignDepth")
+    standardGeneric("plotAlignDepth")
 )
+
+    
+setGeneric("plotAlignDepths",
+           function(object, xlim=NULL,
+                    main="Align Depth", xlab="Position", 
+                    ylab="Align Depth",
+                    log="y", cex.main=2,
+                    col="black", fill.fw="grey90", fill.rv="grey40", grid=TRUE, 
+                    ... )
+    standardGeneric("plotAlignDepths")
+)
+
 
 # bamAlign related generics
 setGeneric("name", function(object)
@@ -3814,7 +3826,48 @@ setMethod("plotAlignDepth", "alignDepth",
     return(invisible())
 })
 
+## A function for plotting both the forward and reverse strands
+## This should probably be called from within another type of function
+## plots only the Align depth. Does not deal with transcripts / positions
+setMethod("plotAlignDepths", "alignDepth",
+        function(object, xlim=NULL,
+                    main="Align Depth", xlab="Position", 
+                    ylab="Align Depth",
+                    log="y", cex.main=1,
+                    col="black", fill.fw="grey90", fill.rv="grey40", grid=TRUE, 
+                    ... )
+{
+    ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    ##  Prepare align depth values for polygon plotting and
+    ##  logarithmic scale
+    ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    nx <- length(object@pos)
+    x <- c(object@pos[1], object@pos, object@pos[nx])
+    y_fw <- c(0, object@depth, 0)
+    y_rv <- c(0, object@depth_r, 0)
+    ## if logs we don't like 0s. But more complicated is handling a reverse
+    ## plot So let's do:
+    if(log == "y"){
+        y_fw = 1 + y_fw
+        y_rv = 1 / (1 + y_rv)
+    }else{
+        y_rv = -y_rv
+    }
+    
+    if(is.null(xlim))
+        xlim <- range(x)
+    ylim <- range(c(y_fw, y_rv))
+    ## then set up the plot
+    plot(x, y_fw, type='n', ylim=ylim, xlim=xlim,
+         xlab=xlab, ylab=ylab, main=main,
+         cex.main=cex.main, log=log, ...)
+    polygon(x, y_fw, col=fill.fw, border=col, lwd=1)
+    polygon(x, y_rv, col=fill.rv, border=col, lwd=1)
 
+    if(grid)
+        grid
+    mtext(paste("Refname:", object@refname), adj=1, cex=0.8)
+})
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 #  Count nucleotides
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
