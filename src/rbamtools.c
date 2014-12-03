@@ -2819,25 +2819,29 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 	end=l->range_end;
 	range_len=end-begin+1;
 
+	// MJ. To separate counts for forward and reverse strands we need
+	// two arrays c (the original) and c_r (c_reverse)
 	unsigned long *c = (unsigned long*) calloc(range_len,sizeof(unsigned long));
+	unsigned long *c_r = (unsigned long*) calloc(range_len,sizeof(unsigned long));
+	// end MJ.
 	align_element *curr_el=l->curr_el;
 	wind_back(l);
 
 	if(LOGICAL(pGap)[0]==TRUE)
 	{
-		for(i=0;i<l->size;++i)
-			count_align_gap_depth(c,begin,end,get_const_next_align(l));
+	  for(i=0;i<l->size;++i) // MJ modified.
+		  count_align_gap_depth(c, c_r,begin,end,get_const_next_align(l));
 	}
 	else
 	{
-		for(i=0;i<l->size;++i)
-			count_align_depth(c,begin,end,get_const_next_align(l));
+	  for(i=0;i<l->size;++i) // MJ modified
+		  count_align_depth(c, c_r,begin,end,get_const_next_align(l));
 	}
 	/* Reset current pointer in align_list		*/
 	l->curr_el=curr_el;
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 * alignDepth vector
+	 * alignDepth vector (forward matches) (MJ modified)
 	 */
 	SEXP res;
 	PROTECT(res=allocVector(INTSXP,range_len));
@@ -2847,6 +2851,19 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 		INTEGER(res)[i]=c[i];
 	}
 	free(c);
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * alignDepth vector (reverse matches) (MJ modified)
+	 */
+	SEXP res_r;
+	PROTECT(res_r=allocVector(INTSXP,range_len));
+	++nProtected;
+	for(i=0;i<range_len;++i)
+	{
+		INTEGER(res_r)[i]=c_r[i];
+	}
+	free(c_r);
+
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * Position
@@ -2866,13 +2883,19 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 	 * Create S4 object
 	 */
 
-    SEXP alignDepth,depth_name,pos_name,params,params_name,refname,refname_name;
+    SEXP alignDepth,depth_name,depth_name_r,pos_name,params,params_name,refname,refname_name;
     PROTECT(alignDepth=NEW_OBJECT(MAKE_CLASS("alignDepth")));
 	++nProtected;
 
     PROTECT(depth_name=Rf_mkString("depth"));
 	++nProtected;
     alignDepth=SET_SLOT(alignDepth,depth_name,res);
+
+    // MJ. reverse depth
+    PROTECT(depth_name_r=Rf_mkString("depth_r"));
+    ++nProtected;
+    alignDepth=SET_SLOT(alignDepth,depth_name_r,res_r);
+    // MJ end.
 
     PROTECT(pos_name=Rf_mkString("pos"));
 	++nProtected;

@@ -168,7 +168,7 @@ setClass("bamRange",
 
 
 setClass("alignDepth",
-            representation(depth="integer", pos="integer",
+            representation(depth="integer", depth_r="integer", pos="integer",
             params="numeric", refname="character"))
 
 
