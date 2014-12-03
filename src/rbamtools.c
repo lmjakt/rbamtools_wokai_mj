@@ -2795,7 +2795,7 @@ SEXP bam_range_get_qual_df(SEXP pRange)
 	return dflist;
 }
 
-SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
+SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap, SEXP flagFilter)
 {
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * Count align depth for given range
@@ -2806,6 +2806,17 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 	if(TYPEOF(pGap)!=LGLSXP)
 		error("[bam_range_get_align_depth] pGap must be LGLSXP!");
 
+	// MJ. To filter based on flags we can introduce a flag filter
+	// alignments that match any of the filters are silently ignored.
+	// The flag check is carried out in the count_align_gap_depth
+	// function to avoid changing the form of the code below.
+	// (i.e. the use of get_const_next_align(l) as an argument to
+	// count_align_gap_depth
+	if(TYPEOF(flagFilter)!=INTSXP)
+	  error("[bam_range_get_align_depth] flagFilter must be an INTSXP!");
+
+	// the following can fail if we have a 0-length numeric.
+	unsigned int fFilter = (unsigned int)INTEGER(flagFilter)[0];
 
 	unsigned nProtected=0;
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
@@ -2830,12 +2841,15 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 	if(LOGICAL(pGap)[0]==TRUE)
 	{
 	  for(i=0;i<l->size;++i) // MJ modified.
-		  count_align_gap_depth(c, c_r,begin,end,get_const_next_align(l));
+	    count_align_gap_depth(c, c_r, fFilter,
+				  begin,end,get_const_next_align(l));
 	}
 	else
 	{
 	  for(i=0;i<l->size;++i) // MJ modified
-		  count_align_depth(c, c_r,begin,end,get_const_next_align(l));
+	    count_align_depth(c, c_r, fFilter, 
+			      begin,end,get_const_next_align(l));
+	  
 	}
 	/* Reset current pointer in align_list		*/
 	l->curr_el=curr_el;
@@ -4796,7 +4810,7 @@ void R_init_rbamtools(DllInfo *info)
 		{ "bam_range_write_fastq_index",			(DL_FUNC) &bam_range_write_fastq_index,			4},
 		{ "bam_range_get_seqlen",					(DL_FUNC) &bam_range_get_seqlen,				1},
 		{ "bam_range_get_qual_df",					(DL_FUNC) &bam_range_get_qual_df,				1},
-		{ "bam_range_get_align_depth",  			(DL_FUNC) &bam_range_get_align_depth,   		2},
+		{ "bam_range_get_align_depth",  			(DL_FUNC) &bam_range_get_align_depth,   		3},
 		{ "bam_range_count_nucs",               	(DL_FUNC) &bam_range_count_nucs,                1},
 		{ "bam_range_idx_copy",               		(DL_FUNC) &bam_range_idx_copy,                	2},
 

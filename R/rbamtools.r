@@ -609,7 +609,7 @@ setGeneric("countNucs", function(object) standardGeneric("countNucs"))
 
 # alignDepth related generics
 setGeneric("alignDepth", 
-                function(object, gap=FALSE) standardGeneric("alignDepth"))
+                function(object, gap=FALSE, flagFilter=0) standardGeneric("alignDepth"))
 
 setGeneric("getDepth", 
                 function(object, named=FALSE) standardGeneric("getDepth"))
@@ -3642,13 +3642,16 @@ setMethod("plotQualQuant",  "bamRange",  function(object)
 
 
 
-setMethod("alignDepth", "bamRange", function(object, gap=FALSE)
+setMethod("alignDepth", "bamRange", function(object, gap=FALSE, flagFilter=0)
 {
     if(!is.logical(gap))
         stop("gap must be logical!")
+    flagFilter <- as.integer(flagFilter)
+    if(flagFilter < 0)
+        stop("flagFilter must be non-negative")
     
     return(.Call("bam_range_get_align_depth", 
-                        object@range, gap, PACKAGE="rbamtools"))
+                        object@range, gap, flagFilter, PACKAGE="rbamtools"))
 })
 
 setMethod("show", "alignDepth", function(object){

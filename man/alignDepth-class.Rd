@@ -37,12 +37,16 @@ alignment depth for genomic regions (represented by bamRange objects).
 % Creation of objects
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{alignDepth(object,gap))}
+Objects can be created by calls of the form \code{alignDepth(object,gap,flagFilter))}
 on bamRange objects. From the \code{bamRange} object, the range is extracted
 and for each nucleotide position whithin this range the numbers of align
 matches are calculated. 
-When \code{alignDepth} is called wich \code{gap=TRUE}, 
-the function counts aligns solely for gap-adjacent match regions (cigar-op's).
+When \code{alignDepth} is called with \code{gap=TRUE}, 
+the function counts aligns solely for gap-adjacent match regions
+(cigar-op's).
+The \code{flagFilter} parameter defines an optional alignment
+filter. Alignments whose filter matches (by binary AND) the flagFilter
+will not be incldued in the integration.
 }
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Slots

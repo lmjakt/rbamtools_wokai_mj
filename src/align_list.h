@@ -522,7 +522,7 @@ static R_INLINE void add_match_depth(unsigned long  *ald, unsigned long begin,un
 }
 
 
-void count_align_depth (unsigned long *ald_f, unsigned long *ald_r,
+void count_align_depth (unsigned long *ald_f, unsigned long *ald_r, unsigned int fFlag,
 			unsigned long begin, unsigned long end, const bam1_t * align)
 {
 	// All positions are 0-based handled.
@@ -543,8 +543,12 @@ void count_align_depth (unsigned long *ald_f, unsigned long *ald_r,
 	unsigned long *ald = (align->core.flag & 0x10) ? ald_r : ald_f;
 	// MJ end. 
 
+	// MJ. General purpose flag. If the filterFlag (fFlag) matches the
+	// align then do not increment count values.
+	if( align->core.flag & fFlag )
+	  return;
+
 	// Add first cigar (must be match)
-	//Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[0]>>BAM_CIGAR_SHIFT);
 	add_match_depth(ald, begin, end, position, cigar[0] >> BAM_CIGAR_SHIFT);
 	position +=(cigar[0] >> BAM_CIGAR_SHIFT);
 
@@ -577,7 +581,7 @@ void count_align_depth (unsigned long *ald_f, unsigned long *ald_r,
 	}
 }
 
-void count_align_gap_depth (unsigned long *ald_f, unsigned long *ald_r,
+void count_align_gap_depth (unsigned long *ald_f, unsigned long *ald_r, unsigned int fFlag,
 			    unsigned long begin, unsigned long end, const bam1_t * align)
 {
 	// All positions are 0-based handled.
@@ -595,6 +599,11 @@ void count_align_gap_depth (unsigned long *ald_f, unsigned long *ald_r,
 	// Flag value of 0x10 (16) indicates reverse strand
 	unsigned long *ald = (align->core.flag & 0x10) ? ald_r : ald_f;
 	// MJ end. 
+
+	// MJ. General purpose flag. If the filterFlag (fFlag) matches the
+	// align then do not increment count values.
+	if( align->core.flag & fFlag )
+	  return;
 
 	// Store count coords for right adjacent match
 

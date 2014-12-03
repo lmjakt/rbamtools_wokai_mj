@@ -173,7 +173,7 @@ SEXP bam_range_write_fastq(SEXP pRange,SEXP pFilename,SEXP pAppend);
 SEXP bam_range_write_fastq_index(SEXP pRange,SEXP pFilename,SEXP pWhichWrite,SEXP pAppend);
 SEXP bam_range_get_seqlen(SEXP pRange);
 SEXP bam_range_get_qual_df(SEXP pRange);
-SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap);
+SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap, SEXP flagFilter);
 SEXP bam_range_count_nucs(SEXP pRange);
 SEXP bam_range_idx_copy(SEXP pRange, SEXP pIndex);
 
