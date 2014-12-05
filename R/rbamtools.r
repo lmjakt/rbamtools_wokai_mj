@@ -632,7 +632,8 @@ setGeneric("plotAlignDepths",
                     main="Align Depth", xlab="Position", 
                     ylab="Align Depth",
                     log="y", cex.main=2,
-                    col="black", fill.fw="grey90", fill.rv="grey40", grid=TRUE, 
+                    col="black", fill.fw="grey40", fill.rv="grey90", x.lines=NULL,
+                    grid=is.null(x.lines),
                     ... )
     standardGeneric("plotAlignDepths")
 )
@@ -3831,11 +3832,12 @@ setMethod("plotAlignDepth", "alignDepth",
 ## plots only the Align depth. Does not deal with transcripts / positions
 setMethod("plotAlignDepths", "alignDepth",
         function(object, xlim=NULL,
-                    main="Align Depth", xlab="Position", 
-                    ylab="Align Depth",
-                    log="y", cex.main=1,
-                    col="black", fill.fw="grey90", fill.rv="grey40", grid=TRUE, 
-                    ... )
+                 main="Align Depth", xlab="Position", 
+                 ylab="Align Depth",
+                 log="y", cex.main=1,
+                 col="black", fill.fw="grey40", fill.rv="grey90", x.lines=NULL,
+                 grid=is.null(x.lines),
+                 ... )
 {
     ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     ##  Prepare align depth values for polygon plotting and
@@ -3861,13 +3863,156 @@ setMethod("plotAlignDepths", "alignDepth",
     plot(x, y_fw, type='n', ylim=ylim, xlim=xlim,
          xlab=xlab, ylab=ylab, main=main,
          cex.main=cex.main, log=log, ...)
-    polygon(x, y_fw, col=fill.fw, border=col, lwd=1)
-    polygon(x, y_rv, col=fill.rv, border=col, lwd=1)
 
     if(grid)
-        grid
+        grid()
+    if(!is.null(x.lines))
+        segments(x.lines, ylim[1], x.lines, ylim[2], col='grey', lty=2)
+    
+    polygon(x, y_fw, col=fill.fw, border=col, lwd=1)
+    polygon(x, y_rv, col=fill.rv, border=col, lwd=1)
     mtext(paste("Refname:", object@refname), adj=1, cex=0.8)
 })
+
+## draws arrows with the arrowhead defined by plot units rathr
+## than by inches. Allows the arrowhead to be scaled with the
+## code 1, 2, 3, arrowhead at x1, x2, x1 & x2 respectively
+## headLength determines the direction of the arrow head, with
+## positive numbers pointing to the right.
+pu.arrows <- function(x1, y1, x2, y2, headLength, headWidth, code=2, ...)
+{
+    a.n <- length(x1)
+    if(a.n != length(x2) || a.n != length(y1) || a.n != length(y2)){
+        warning("pu.arrows, segment coordinates of different length. No arrows drawn")
+        return()
+    }
+    if( code < 1 || code > 2 ){
+        code <- 2
+        warn("pu.arrows code less than 1 or larger than 2. Set to 2")
+    }
+    if( code == 3 ){
+        head.segments <- matrix(nrow=(4*a.n), ncol=4) ## x1, y1, x2, y2
+    }else{
+        head.segments <- matrix(nrow=(2*a.n), ncol=4)
+    }
+    if(code == 1 || code == 3){
+        head.segments[1:(2*a.n),1] <- rep(x1, 2)
+        head.segments[1:(2*a.n),2] <- rep(y1, 2)
+        head.segments[1:(2*a.n),3] <- rep((x1-headLength), 2)
+        head.segments[1:a.n,4] <- y1+headWidth
+        head.segments[(a.n+1):(2*a.n),4] <- y1-headWidth
+    }
+    ## next we have to adjust where we put the segment information as that
+    ## depends on how many arrowheads we have
+    r1 <- ifelse( (code == 2), 1, (2*a.n + 1) )  ## r1 = row1
+    if(code == 2 || code == 3){
+        head.segments[ r1:(r1+2*a.n-1), 1] <- rep(x2, 2)
+        head.segments[ r1:(r1+2*a.n-1), 2] <- rep(y2, 2)
+        head.segments[ r1:(r1+2*a.n-1), 3] <- rep((x2-headLength), 2)
+        head.segments[ r1:(r1+a.n-1), 4] <- y2+headWidth
+        head.segments[ (r1+a.n):(r1+2*a.n-1), 4] <- y2-headWidth
+    }
+    segments( c(x1, head.segments[,1]), c(y1, head.segments[,2]),
+              c(x2, head.segments[,3]), c(y2, head.segments[,4]), ...
+             )
+    
+}
+## t should be a list containing
+## t$transcripts : dataframe containing columns identifier, start, end, strand
+## t$exons       : dataframe containing columns transcript identifier, start, end
+## strand is defined as +1 / -1
+## if do.plot is FALSE returns the number of y positions required to plot.
+plotTranscripts <- function(t, xlim=NULL, main="", xlab="position", ylab="",
+                            ex.height=0.25, min.sep=0.02, ar.head.pos=2, yaxt='n',
+                            bty='n', doPlot=TRUE, ...)
+{
+    tr <- t$transcripts
+    ex <- t$exons
+    ## 
+    if(is.null(xlim))
+        xlim <- range( c(tr[,'start'], tr[,'end']) )
+
+    min.sep <- min.sep * (xlim[2] - xlim[1])
+    ## order by position
+    tr <- tr[ order(tr[,'start']), ]
+
+    ## for collission detection set up a set of y positions
+
+    ypos <- rep(1, nrow(tr))
+    ex.y <- rep(1, nrow(ex)) ## default position
+    i <- 2
+    while(i < (1+nrow(tr))){
+        o.i <- which( (tr[i,'start'] - tr[1:(i-1), 'end']) < min.sep ) ## those that can overlap.
+        ypos[i] <- min(setdiff(1:nrow(tr), ypos[o.i]))     ## the minimum of y positions that don't overlap
+        ## set the exon positions as well
+        ex.y[ ex[,'transcript'] == tr[i,'transcript'] ] <- ypos[i]
+        i <- i + 1
+    }
+    if(!doPlot)
+        return( max(ypos) )
+
+    ypos <- -ypos
+    ex.y <- -ex.y
+    
+    plot(1,1, type='n', xlim=xlim, ylim=c(min(ex.y)-2*ex.height, max(ex.y)+2*ex.height),
+         main=main, xlab=xlab, ylab=ylab,
+         yaxt=yaxt, bty=bty, ...)
+    ## two types of arrow forward and reverse.
+    ar.l <- min.sep / ar.head.pos
+    fwd.b <- tr[,'seq_region_strand'] == 1
+    segments( tr[,'start'], ypos, tr[,'end'], ypos, col=1:nrow(tr) )
+    
+    pu.arrows( tr[fwd.b,'end'], ypos[fwd.b], tr[fwd.b,'end']+ar.l,
+               ypos[fwd.b], col=which(fwd.b), code=2, headLength=ar.l/2,
+               headWidth=ex.height, lty=1 )
+    pu.arrows( tr[!fwd.b,'start']-ar.l, ypos[!fwd.b],
+               tr[!fwd.b,'start'], ypos[!fwd.b], col=which(!fwd.b),
+               code=1, headLength=-ar.l/2, headWidth=ex.height, lty=1 )
+    ## but only one type of exon!
+    rect(ex[,'start'], ex.y-ex.height, ex[,'end'],
+         ex.y+ex.height, col=grey(0.5), border='black')
+
+}
+
+## we should define a set of 
+plotDepthsTranscripts <- function(object, xlim=NULL,
+                                  main="Align Depth", xlab="",
+                                  ylab="Align Depth",
+                                  log="y", cex.main=1,
+                                  col="black", fill.fw="grey40", fill.rv="grey90",
+                                  grid=FALSE,
+                                  tr, tr.xlab="position", tr.ylab="", ex.height=0.4, min.sep=0.02,
+                                  ar.head.pos=2, tr.yaxt='n', tr.bty='n', plotsRatio=5,
+                                  ...)
+{
+    op <- par(no.readonly=TRUE)
+    ### first we need to work out a reasonable layout. This will depend on
+    ### how many layers of transcripts that we need to show
+    tr.layers <- plotTranscripts(tr, doPlot=FALSE)
+
+    if(is.null(xlim))
+        xlim <- range(object@pos)
+    
+    ## for each layer give 1/5th the height of the plot
+    l.m <- matrix(c(1,2), nrow=2, ncol=1)
+    layout(l.m, heights=c(plotsRatio, tr.layers))
+    x.lines <- c(tr$exons[,'start'], tr$exons[,'end'])
+    par(mar=c(0,4,4,2))
+    ##par(oma=c())  
+    plotAlignDepths(object, xlim, main=main, xlab=xlab, ylab=ylab, log=log,
+                    cex.main=cex.main, col=col, fill.fw=fill.fw, fill.rv=fill.rv,
+                    grid=grid, x.lines=x.lines, bty='n', xaxt='n', ...)
+
+    par(mar=c(5,4,0,2))
+    plotTranscripts(tr, xlim=xlim, xlab=tr.xlab, ylab=tr.ylab, ex.height=ex.height,
+                    min.sep=min.sep, ar.head.pos=2, yaxt=tr.yaxt, bty='n')
+    ## the following seems to make sense, but is a little bit too messy.
+    ##usr <- par("usr")
+    ##segments(x.lines, usr[3], x.lines, usr[4], lty=2, col='grey')
+    
+    par(op)
+}
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 #  Count nucleotides
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
