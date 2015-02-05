@@ -2816,7 +2816,7 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap, SEXP flagFilter)
 	  error("[bam_range_get_align_depth] flagFilter must be an INTSXP!");
 
 	// the following can fail if we have a 0-length numeric.
-	unsigned int fFilter = (unsigned int)INTEGER(flagFilter)[0];
+	int fFilter = INTEGER(flagFilter)[0];
 
 	unsigned nProtected=0;
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));

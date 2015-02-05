@@ -522,7 +522,7 @@ static R_INLINE void add_match_depth(unsigned long  *ald, unsigned long begin,un
 }
 
 
-void count_align_depth (unsigned long *ald_f, unsigned long *ald_r, unsigned int fFlag,
+void count_align_depth (unsigned long *ald_f, unsigned long *ald_r, int fFlag,
 			unsigned long begin, unsigned long end, const bam1_t * align)
 {
 	// All positions are 0-based handled.
@@ -581,7 +581,7 @@ void count_align_depth (unsigned long *ald_f, unsigned long *ald_r, unsigned int
 	}
 }
 
-void count_align_gap_depth (unsigned long *ald_f, unsigned long *ald_r, unsigned int fFlag,
+void count_align_gap_depth (unsigned long *ald_f, unsigned long *ald_r, int fFlag,
 			    unsigned long begin, unsigned long end, const bam1_t * align)
 {
 	// All positions are 0-based handled.

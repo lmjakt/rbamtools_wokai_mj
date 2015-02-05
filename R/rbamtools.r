@@ -3660,8 +3660,8 @@ setMethod("alignDepth", "bamRange", function(object, gap=FALSE, flagFilter=0)
     if(!is.logical(gap))
         stop("gap must be logical!")
     flagFilter <- as.integer(flagFilter)
-    if(flagFilter < 0)
-        stop("flagFilter must be non-negative")
+    ##if(flagFilter < 0)
+    ##    stop("flagFilter must be non-negative")
     
     return(.Call("bam_range_get_align_depth", 
                         object@range, gap, flagFilter, PACKAGE="rbamtools"))
@@ -3835,8 +3835,10 @@ setMethod("plotAlignDepths", "alignDepth",
                  main="Align Depth", xlab="Position", 
                  ylab="Align Depth",
                  log="y", cex.main=1,
-                 col="black", fill.fw="grey40", fill.rv="grey90", x.lines=NULL,
-                 grid=is.null(x.lines),
+                 col="black", fill.fw=grey(0.2), fill.rv=grey(0.4), x.lines=NULL,
+                 grid=is.null(x.lines), add.label=FALSE, yax.side=3, cex.lab=1,
+                 cex.axis=1,
+                 bg.col=NULL,
                  ... )
 {
     ## - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -3862,8 +3864,13 @@ setMethod("plotAlignDepths", "alignDepth",
     ## then set up the plot
     plot(x, y_fw, type='n', ylim=ylim, xlim=xlim,
          xlab=xlab, ylab=ylab, main=main,
-         cex.main=cex.main, log=log, ...)
-
+         cex.main=cex.main, log=log, yaxt='n', cex.lab=cex.lab, ...)
+    ## draw a background colour if the user would like it.
+    usr <- par("usr")
+    if(!is.null(bg.col))
+      rect( usr[1], usr[3], usr[2], usr[4], col=bg.col, border=NA )
+    axis(side=yax.side, cex.axis=cex.axis)
+    
     if(grid)
         grid()
     if(!is.null(x.lines))
@@ -3871,7 +3878,8 @@ setMethod("plotAlignDepths", "alignDepth",
     
     polygon(x, y_fw, col=fill.fw, border=col, lwd=1)
     polygon(x, y_rv, col=fill.rv, border=col, lwd=1)
-    mtext(paste("Refname:", object@refname), adj=1, cex=0.8)
+    if(add.label)
+      mtext(paste("Refname:", object@refname), adj=1, cex=0.8)
 })
 
 ## draws arrows with the arrowhead defined by plot units rathr
@@ -3976,42 +3984,124 @@ plotTranscripts <- function(t, xlim=NULL, main="", xlab="position", ylab="",
 
 ## we should define a set of 
 plotDepthsTranscripts <- function(object, xlim=NULL,
-                                  main="Align Depth", xlab="",
-                                  ylab="Align Depth",
+                                  main="", xlab="", page.title="",
+                                  ylab=NULL,
                                   log="y", cex.main=1,
-                                  col="black", fill.fw="grey40", fill.rv="grey90",
+                                  col="black", fill.fw=grey(0.4), fill.rv=grey(0.75),
                                   grid=FALSE,
-                                  tr, tr.xlab="position", tr.ylab="", ex.height=0.4, min.sep=0.02,
-                                  ar.head.pos=2, tr.yaxt='n', tr.bty='n', plotsRatio=5,
+                                  tr=NULL, tr.xlab="position", tr.ylab="", ex.height=0.4, min.sep=0.02,
+                                  ar.head.pos=2, tr.yaxt='n', tr.bty='n', plotsRatio=5, cex.lab=NULL,
+                                  cex.axis=1,
                                   ...)
 {
     op <- par(no.readonly=TRUE)
     ### first we need to work out a reasonable layout. This will depend on
     ### how many layers of transcripts that we need to show
-    tr.layers <- plotTranscripts(tr, doPlot=FALSE)
+    tr.layers <- 1
+    if(!is.null(tr))
+      tr.layers <- plotTranscripts(tr, doPlot=FALSE)
 
-    if(is.null(xlim))
-        xlim <- range(object@pos)
+    ## if not a list coerce to a list, so that we can use the same semantics
+    if(!is.list(object))
+      object <- list( 'depth'=object ) ## 
+
+    if(is.null(ylab)) ylab=rep("", length(object))
+    if(length(ylab) != length(object)) ylab <- rep(ylab, length(object))
     
+    if(is.null(xlim)){
+      xlim <- range(object[[1]]@pos)
+      i <- 1
+      while(i < length(object)){
+        i <- i + 1
+        xlim <- range(c(xlim, object[[i]]@pos))
+      }
+    }
+    par(oma=c(2,0,3,0))
     ## for each layer give 1/5th the height of the plot
-    l.m <- matrix(c(1,2), nrow=2, ncol=1)
-    layout(l.m, heights=c(plotsRatio, tr.layers))
-    x.lines <- c(tr$exons[,'start'], tr$exons[,'end'])
-    par(mar=c(0,4,4,2))
-    ##par(oma=c())  
-    plotAlignDepths(object, xlim, main=main, xlab=xlab, ylab=ylab, log=log,
-                    cex.main=cex.main, col=col, fill.fw=fill.fw, fill.rv=fill.rv,
-                    grid=grid, x.lines=x.lines, bty='n', xaxt='n', ...)
+    l.m <- matrix(1:(length(object)+2), nrow=(length(object)+2), ncol=1)
+##    l.m <- matrix(c(0,1:(length(object)+1)), nrow=(length(object)+2), ncol=1)
+    l.heights <- c(rep(plotsRatio, length(object)), tr.layers)
+    l.heights <- l.heights / sum(l.heights)
+    l.heights <- c(lcm(1), l.heights)
+    layout(l.m, heights=l.heights)
+    x.lines <- unique(c(tr$exons[,'start'], tr$exons[,'end']))
+    par(mar=c(0,4,0,3))
+    plot.new()
+    usr <- par("usr")
+    text(mean(usr[1:2]), mean(usr[3:4]), page.title, cex=2, adj=c(0.5, 0.5))
+    ##par(oma=c())
+    ## determine a reasonable size for the y-label.
+    
+    for(i in 1:length(object)){
+##      if(i > 1) par(mar=c(0,4,0,2))
+      yax.side = ifelse( (i %% 2) > 0, 2, 4 )
+      bg.col = ifelse( (i %% 2) > 0, grey(0.95), grey(0.9) )
+      plotAlignDepths(object[[i]], xlim, main=main, xlab=xlab, ylab="", log=log,
+                      cex.main=cex.main, col=col, fill.fw=fill.fw, fill.rv=fill.rv,
+                      grid=grid, x.lines=x.lines, bty='n', xaxt='n',
+                      yax.side=yax.side, cex.axis=cex.axis,
+                      bg.col=bg.col, ...)
+      usr <- par("usr")
+      if(abs(usr[4]) > abs(usr[3])){
+        legend('topleft', legend=ylab[i], bty='n')
+      }else{
+        legend('bottomleft', legend=ylab[i], bty='n')
+      }
+    }
 
-    par(mar=c(5,4,0,2))
-    plotTranscripts(tr, xlim=xlim, xlab=tr.xlab, ylab=tr.ylab, ex.height=ex.height,
-                    min.sep=min.sep, ar.head.pos=2, yaxt=tr.yaxt, bty='n')
-    ## the following seems to make sense, but is a little bit too messy.
-    ##usr <- par("usr")
-    ##segments(x.lines, usr[3], x.lines, usr[4], lty=2, col='grey')
+    
+    if(!is.null(tr)){
+      plotTranscripts(tr, xlim=xlim, xlab=tr.xlab, ylab=tr.ylab, ex.height=ex.height,
+                      min.sep=min.sep, ar.head.pos=2, yaxt=tr.yaxt, bty='n')
+    }else{
+      plot(1,1, type='n', xlim=xlim, xlab=tr.xlab, ylab=tr.ylab, 
+           yaxt=tr.yaxt, bty='n')
+
+    }
     
     par(op)
 }
+
+## take a list of AlignDepths and return the sum of the depths
+## simple scenario, only allow alignDepths covering the same region
+## copies the params vector from the first member of the list
+mergeAlignDepths <- function(adList){
+  ## first check if all are the same.
+  pos <- adList[[1]]@pos
+  for(i in 1:length(adList)){
+    if(!identical(pos, adList[[i]]@pos))
+      stop("[mergeAlignDepths] non-identical position arrays")
+  }
+  mDepths <- adList[[1]]
+  i <- 1
+  while(i < length(adList)){
+    i <- i + 1
+    mDepths@depth <- mDepths@depth + adList[[i]]@depth
+    mDepths@depth_r <- mDepths@depth_r + adList[[i]]@depth_r
+  }
+  mDepths
+}
+
+## return a table of alignmentFlags
+alignmentFlags <- function(){
+  data.frame(flag=2^(0:11),
+             description=c(
+               'template having multiple segments in sequencing',
+               'each segment properly aligned according to the aligner',
+               'segment unmapped',
+               'next segment in the template unmapped',
+               'SEQ being reverse complemented',
+               'SEQ of the next segment in the templated being reversed',
+               'the first segment in the template',
+               'the last segment in the template',
+               'secondary alignment',
+               'not passing quality controls',
+               'PCR or optical duplicate',
+               'supplementary alignment'
+               ))
+}
+             
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 #  Count nucleotides
