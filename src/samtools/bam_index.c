@@ -681,7 +681,64 @@ int bam_fetch(bamFile fp, const bam_index_t *idx, int tid, int beg, int end, voi
 	bam1_t *b;
 	b = bam_init1();
 	iter = bam_iter_query(idx, tid, beg, end);
-	while ((ret = bam_iter_read(fp, iter, b)) >= 0) func(b, data);
+
+	//	while ((ret = bam_iter_read(fp, iter, b)) >= 0) func(b, data);
+	//  this line has been replaced by the section going through the CIGAR
+	//  string below.
+
+	// MJ: 
+	// this function uses bam_iter_query() to get an iterator to the
+	// range of sequence matches. This returns all reads whose alignment
+	// overlaps the range and includes reads which may not have any
+	// alignment within the range. This isn't always what one wants and
+	// it would be good to be able to select the types of overlaps that
+	// should be included.
+	// This ought to be done in the bam_iter_query function, but I'm not finding
+	// it easy to understand that, and it will take a little time to learn the index
+	// structure. For my present purpose I will make a small temporary hack here.
+	//
+	// We should select among the following types of overlap:
+	// where range is the specified region, and the read begins and ends are specifed by r_b, r_e
+
+	// 1. range_b <= r_e && range_e >= r_b     
+	//    Anything which overlaps or contains the regions. Note that such an alignment
+	//    need not contain any matching position with the range (as these can be spliced out).
+	//    This is the most non-specific criteria (and means overlaps in some way).
+	//    This seems to be what is returned by the index.
+	// 2. range_b <= r_b && range_e >= r_e
+	//    The read is completely contained within the region.
+	// 3. range_b <= r_b && range_e >= r_b
+	//    The beginning of the read lies within the range
+	// 4. range_b <= r_e && range_e >= r_e
+	//    The end of the read lies within the range.
+	// 5. Some part of the alignment occurs within the region. This cannot be expressed
+	//    using only the begins and end positions since insertions / gaps can be included
+	//    in the alignment.
+	// 
+	// Note that if 3 and 4 are both true then 2 is also true. If 3 XOR 4, then we have an overlap
+	// that is not completely contained. If, only one is true, then the region is contained within
+	// the alignment.
+
+	// In any case in order to know the beg and end of the alignment we need to go through the
+	// cigar string. We should be able to get this from the index, but I'm not sure. Still for
+	// most alignments the cigar string is rather short, so it should be OK.
+
+	while ((ret = bam_iter_read(fp, iter, b)) >= 0){
+	  // see if we can parse the cigar line here to get the begin and
+	  // end positions of b. (begin, presumably is pos).
+	  int32_t b_beg = b->core.pos;
+	  int32_t b_end = b_beg;
+	  uint32_t i;
+	  for(i = 0; i < b->core.n_cigar; ++i)
+	    b_end += b->cigar[i] >> BAM_CIGAR_SHIFT;
+	  // here print something out, just to see how it goes
+	  // Rprintf("range: %d -> %d\talign:  %d --> %d \n", beg, end, b_beg, b_end);
+	  
+	  // increment counter only if the beg or end are within the range specified
+	  if( (b_beg >= beg && b_beg < end) || (b_end >= beg && b_end < end) )
+	    func(b, data);  // this does the counting..
+	}
+
 	bam_iter_destroy(iter);
 	bam_destroy1(b);
 	return (ret == -1)? 0 : ret;

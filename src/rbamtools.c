@@ -1952,6 +1952,10 @@ static int bam_count_fetch_func(const bam1_t *align, void *data)
 	uint32_t i;
 	uint32_t *cigar=bam1_cigar(align);
 
+	// MJ. Check what kind of qualities and other things that we get from these
+	// sequences. Can we detect when a sequence is mapped to more than one location?
+	//Rprintf("qual: %d\tflag: %x\n", align->core.qual, align->core.flag);
+
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * Count number of aligns for each Cigar-OP type
 	 * M=0, I=1, D=2, N=3, S=4, H=5, P=6, '='=7, X=8
