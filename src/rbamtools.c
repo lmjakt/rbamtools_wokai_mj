@@ -1966,7 +1966,8 @@ static int bam_count_fetch_func(const bam1_t *align, void *data)
 	return 0;
 }
 
-SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
+SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords, 
+	       SEXP flagFilter, SEXP alignFlag, SEXP strandFlag)
 {
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_count] pReader is No external pointer!\n");
@@ -1976,6 +1977,23 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 		error("[bam_count] pCoords is no REAL!\n");
 	if(LENGTH(pCoords)!=3)
 		error("[bam_count] pCoords must contain three values (refid,begin,end)!\n");
+
+	// MJ. A general flag filter and a flag to specify what kinds of aligns to include
+	// in the count.
+	if(TYPEOF(flagFilter) != INTSXP)
+		error("[bam_count] flagFilter must be an INTSXP\n");
+	if(TYPEOF(alignFlag) != INTSXP)
+		error("[bam_count] alignFlag must be an INTSXP\n");
+	if(TYPEOF(strandFlag) != INTSXP)
+		error("[bam_count] strandFlag must be an INTSXP\n");
+	// also check the length of these two. Should be 1
+	if(LENGTH(flagFilter) != 1)
+		error("[bam_count] flagFilter should have length 1\n");
+	if(LENGTH(alignFlag) != 1)
+		error("[bam_count] alignFlag should have length 1\n");
+	if(LENGTH(strandFlag) != 1)
+		error("[bam_count] strandFlag should have length 1\n");
+
 
 	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	bam_index_t *index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
@@ -1988,6 +2006,10 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	int refid=(int) pi[0];
 	int begin=(int) pi[1];
 	int end=(int) pi[2];
+
+	int filter = INTEGER(flagFilter)[0];
+	int alignType = INTEGER(alignFlag)[0];
+	int strand = INTEGER(strandFlag)[0];
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[bam_count] refid out of range!\n");
@@ -2002,7 +2024,8 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	for(i=0;i<10;++i)
 		count[i]=0;
 
-	bam_fetch(reader->x.bam, index, refid, begin, end, (void*)&count, bam_count_fetch_func);
+	bam_fetch_2f(reader->x.bam, index, refid, begin, end, (void*)&count, 
+		     bam_count_fetch_func, filter, alignType, strand);
 
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,10));
@@ -4741,7 +4764,7 @@ void R_init_rbamtools(DllInfo *info)
 		{ "bam_reader_seek",						(DL_FUNC) &bam_reader_seek,						2},
 		{ "bam_reader_write_fastq",  				(DL_FUNC) &bam_reader_write_fastq,   			3},
 		{ "bam_reader_write_fastq_index",			(DL_FUNC) &bam_reader_write_fastq_index,  		4},
-		{ "bam_count",								(DL_FUNC) &bam_count,							3},
+		{ "bam_count",								(DL_FUNC) &bam_count,							6},
 
 		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 		 * gap_list

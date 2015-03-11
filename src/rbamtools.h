@@ -91,7 +91,15 @@ SEXP bam_reader_write_fastq(SEXP pReader,SEXP pFilename,SEXP pAppend);
 SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichWrite,SEXP pAppend);
 
 static int bam_count_fetch_func(const bam1_t *align, void *data);
-SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords);
+// Modify the bam_count function to take two flags
+// the flagFilter is used to remove ignore alignments with matching filters.
+// the alignFlag defines which types of alignments to include with
+// 1 -> begin must be within range, 2 -> end must be within range.
+SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords, 
+	       SEXP flagFilter, SEXP alignFlag, SEXP strandFlag);
+// note that we have to modify the core functions in samtools.c to handle this
+// as we cannot change the prototype for the bam_count_fetch_func, and this
+// function does not know the desired range.
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // gap_list

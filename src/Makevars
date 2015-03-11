@@ -1,5 +1,8 @@
 PKG_LIBS=-lz
 CXX_STD = CXX11
+## for debugging uncomment the two following lines
+##CFLAGS = -g
+##CXXFLAGS = -g
 BAMTOOLS_OBJECTS = bam.o bam_aux.o bam_import.o bam_index.o bam_sort.o bgzf.o faidx.o kstring.o razf.o sam.o sam_header.o
 PKG_OBJECTS = rbamtools.o
 OBJECTS = $(BAMTOOLS_OBJECTS:%=samtools/%) $(PKG_OBJECTS)

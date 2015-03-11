@@ -644,11 +644,13 @@ extern "C" {
 	typedef int (*bam_fetch_f)(const bam1_t *b, void *data);
 
 	/*!
-	  @abstract Retrieve the alignments that are overlapped with the
-	  specified region.
-
-	  @discussion A user defined function will be called for each
-	  retrieved alignment ordered by its start position.
+	  @abstract Retrieve the alignments that overlap the region as
+	  specified by beg, end and the alignmentFlag and which do not
+	  match the flagFilter. Introduced by MJ.
+	  
+	  @discussion An extension of bam_fetch that allows the user to 
+	  specify the types of aligns are fetched (i.e. for which the 
+	  user defined function is called).
 
 	  @param  fp    BAM file handler
 	  @param  idx   pointer to the alignment index
@@ -657,8 +659,31 @@ extern "C" {
 	  @param  end   end coordinate, 0-based
 	  @param  data  user provided data (will be transferred to func)
 	  @param  func  user defined function
-	 */
+	  @param  flagFilter alignments whose flag match the flagFilter are not counted
+	  @param  alignmentFlag A binary flag where bits 1 and 2 specify whether the alignment start and end must lie within the range specified.
+	  @param  strandFlag 0 = both strands, 1st bit set = forward, any higher bits only reverse strand.
+	*/
+	int bam_fetch_2f(bamFile fp, const bam_index_t *idx, int tid, int beg, int end, void *data, 
+			 bam_fetch_f func, int flagFilter, int alignmentFlag, int strandFlag);
+
+	/*!
+	  @abstract Retrieve the alignments that are overlapped with the
+	  specified region.
+
+	  @discussion A user defined function will be called for each
+	  retrieved alignment ordered by its start position. The function
+	  calls the bam_fetch_2f function.
+
+	  @param  fp    BAM file handler
+	  @param  idx   pointer to the alignment index
+	  @param  tid   chromosome ID as is defined in the header
+	  @param  beg   start coordinate, 0-based
+	  @param  end   end coordinate, 0-based
+	  @param  data  user provided data (will be transferred to func)
+	  @param  func  user defined function
+	*/
 	int bam_fetch(bamFile fp, const bam_index_t *idx, int tid, int beg, int end, void *data, bam_fetch_f func);
+	
 
 	bam_iter_t bam_iter_query(const bam_index_t *idx, int tid, int beg, int end);
 	int bam_iter_read(bamFile fp, bam_iter_t iter, bam1_t *b);

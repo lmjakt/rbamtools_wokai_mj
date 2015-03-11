@@ -453,7 +453,7 @@ setGeneric("bamCopy", function(object, writer, refids, verbose=FALSE)
 setGeneric("extractRanges",function(object, ranges, filename, complex=FALSE,
             header, idxname) standardGeneric("extractRanges"))
 
-setGeneric("bamCount", function(object, coords) standardGeneric("bamCount"))
+setGeneric("bamCount", function(object, coords, flagFilter=0, alignFlag=0, strandFlag=0) standardGeneric("bamCount"))
 
 setGeneric("bamCountAll", function(object, verbose=FALSE)
             standardGeneric("bamCountAll"))
@@ -1465,7 +1465,7 @@ setMethod("extractRanges", "bamReader",
 
 
 
-setMethod("bamCount", signature="bamReader", definition=function(object, coords)
+setMethod("bamCount", signature="bamReader", definition=function(object, coords, flagFilter=0, alignFlag=0, strandFlag=0)
 {
     if(!indexInitialized(object))
         stop("[bamCount] reader must have initialized index! Use 'loadIndex'!")
@@ -1475,9 +1475,14 @@ setMethod("bamCount", signature="bamReader", definition=function(object, coords)
     
     if(!is.numeric(coords))
         stop("[bamCount] coords must be numeric")
+
+    flagFilter <- as.integer(flagFilter)
+    alignFlag <- as.integer(alignFlag)
+    strandFlag <- as.integer(strandFlag)
     
     res <- .Call("bam_count", object@reader, 
-                                    object@index, coords, PACKAGE="rbamtools")
+                 object@index, coords, flagFilter, alignFlag, strandFlag,
+                 PACKAGE="rbamtools")
     
     names(res) <- c("M", "I", "D", "N", "S", "H", "P", "=", "X", "nAligns")
     return(res)
